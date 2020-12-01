@@ -8,8 +8,9 @@ const PENTHOUSE_BUTTON=0;
 const BASEMENT_BUTTON=1;
 const UP_BUTTON=2;
 const DOWN_BUTTON=3;
-const BUTTON_NAME =["Penthouse", "Basement", "Up", "Down"];
+const BUTTON_NAME = ["Penthouse button", "Basement button", "Up button", "Down button"];
 const ELEVATOER_NAME=["A", "B"];
+const FLOOR_NAME = ["Basement", "1st floor", "2nd floor", "3rd floor", "4th floor", "5th floor", "6th floor", "7th floor", "8th floor", "9th floor", "Penthouse"];
 
 let passengerId = 0;
 
@@ -88,7 +89,7 @@ class Building {
           this.removePassenger(passengerArray, passenger)
           passenger.endTravelTime = new Date();
           this.arrivedPassengers.push(passenger);
-          console.log(`[LOG] Passenger# ${passenger.personID} leaves elevator on ${passenger.destinationFloor} floor from elevator ${ELEVATOER_NAME[passenger.elevatorNumber]}`);
+          console.log(`[LOG] Passenger# ${passenger.personID} leaves the lift on ${FLOOR_NAME[passenger.destinationFloor]} from Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}`);
     
       });
   }
@@ -170,7 +171,7 @@ class Building {
       tempFloor.waitingPassengers.push(passenger);
       //console.log("passenger.elevatorNumber="+passenger.elevatorNumber);
       this.elevators[passenger.elevatorNumber].hasAssigned=true;
-      console.log(`[LOG] Passenger# ${passenger.personID} push ${BUTTON_NAME[buttonPush]} button on ${fromFloorNumber} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]} tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length}`);
+      console.log(`[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]} on ${FLOOR_NAME[fromFloorNumber]} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]} tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length}`);
   }
 
   moveElevator(elevatorNumber){
@@ -294,3 +295,8 @@ const createRandomPassenger = () => {
 
 createRandomPassenger();
 
+/*
+    Name: Sengchanh Jutiseema
+    Homework: Project #3 Elevator
+    Date: 11/30/2020
+*/
