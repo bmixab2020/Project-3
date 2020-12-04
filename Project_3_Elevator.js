@@ -1,9 +1,9 @@
-const ELEVATOR_MOVE_FLOOR = 1000;
+const TIME_LIFT_MOVE_BTW_FLOOR = 1000;
 const ELEVATOR_OPEN_DOOR = 100;
 const ELEVATOR_CLOSE_DOOR = 100;
 const PASSENGER_ENTER_ELEVATOR = 500;
 const PASSENGER_LEAVE_ELEVATOR = 500;
-const MAX_NUM_PASSENGER_TEST = 2;
+const MAX_NUM_PASSENGER_TEST = 10;
 const PENTHOUSE_BUTTON=0;
 const BASEMENT_BUTTON=1;
 const UP_BUTTON=2;
@@ -11,6 +11,8 @@ const DOWN_BUTTON=3;
 const BUTTON_NAME = ["Penthouse button", "Basement button", "Up button", "Down button"];
 const ELEVATOER_NAME=["A", "B"];
 const FLOOR_NAME = ["Basement", "1st floor", "2nd floor", "3rd floor", "4th floor", "5th floor", "6th floor", "7th floor", "8th floor", "9th floor", "Penthouse"];
+const BASEMENT_FLOOR=0;
+const PENTHOUSE_FLOOR=10;
 
 let passengerId = 0;
 
@@ -36,7 +38,8 @@ class Elevator {
       this.destinationFloor = maxFloor;
       this.curFloor = curFloor;
       this.inLiftPassengers = [];
-      this.hasAssigned = false;
+      this.isMoving = false;
+      this.hasPassengerWaiting=false;
     }
     isEmptyLift(){
       return (this.inLiftPassengers.length===0)
@@ -62,6 +65,7 @@ class Building {
       }
       this.minPosibleFloor = minPosibleFloor;
       this.maxPosibleFloor = maxPosibleFloor;
+      this.print=false;
       this.passengers = [];
       this.arrivedPassengers =[];
       this.elevators = [];
@@ -89,7 +93,7 @@ class Building {
           this.removePassenger(passengerArray, passenger)
           passenger.endTravelTime = new Date();
           this.arrivedPassengers.push(passenger);
-          console.log(`[LOG] Passenger# ${passenger.personID} leaves the lift on ${FLOOR_NAME[passenger.destinationFloor]} from Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}`);
+          console.log(`\n[LOG] Passenger# ${passenger.personID} leaves the lift on ${FLOOR_NAME[passenger.destinationFloor]} from Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}`);
     
       });
   }
@@ -106,34 +110,24 @@ class Building {
           return false;
   }
   getAssignElevatorNumber(fromFloorNumber,passenger){
-      if(this.elevators[0].hasAssigned){
-          if(this.elevators[0].direction==="UP" && passenger.direction==="UP" && this.elevators[0].currentFloor<=fromFloorNumber)
+
+      if(this.elevators[0].isMoving){
+          if(this.elevators[0].direction==="UP" && passenger.direction==="UP" && this.elevators[0].currentFloor<fromFloorNumber)
               passenger.elevatorNumber=0;
-          else if(this.elevators[0].direction==="DOWN" && passenger.direction==="DOWN" && this.elevators[0].destinationFloor>=fromFloorNumber)
+          else if(this.elevators[0].direction==="DOWN" && passenger.direction==="DOWN" && this.elevators[0].currentFloor>fromFloorNumber)
               passenger.elevatorNumber=0; 
-      }else if(this.elevators[1].hasAssigned){
-          if(this.elevators[1].direction==="UP" && passenger.direction==="UP" && this.elevators[1].currentFloor<=fromFloorNumber)
+      }else if(this.elevators[1].isMoving){
+          if(this.elevators[1].direction==="UP" && passenger.direction==="UP" && this.elevators[1].currentFloor<fromFloorNumber)
               passenger.elevatorNumber=1;
-          else if(this.elevators[1].direction==="DOWN" && passenger.direction==="DOWN" && this.elevators[1].destinationFloor>=fromFloorNumber)
+          else if(this.elevators[1].direction==="DOWN" && passenger.direction==="DOWN" && this.elevators[1].currentFloor>=fromFloorNumber)
               passenger.elevatorNumber=1; 
       }
+
       if(passenger.elevatorNumber==null){
-        if(!this.elevators[0].hasAssigned){
-            passenger.elevatorNumber=0; 
-            if(this.elevators[0].curFloor<=fromFloorNumber)
-                this.elevators[0].direction="UP";
-            else
-                this.elevators[0].direction="DOWN";
-            this.elevators[0].destinationFloor = fromFloorNumber;
-        }else if(!this.elevators[1].hasAssigned){
-            passenger.elevatorNumber=1; 
-            if(this.elevators[1].curFloor<=fromFloorNumber)
-                this.elevators[1].direction="UP";
-            else
-                this.elevators[1].direction="DOWN";
-            this.elevators[1].destinationFloor = fromFloorNumber; 
-        }else
-            passenger.elevatorNumber=getRandomIntInclusive(0,1);  
+          if(passenger.direction==="UP")
+              passenger.elevatorNumber=0;
+          else 
+              passenger.elevatorNumber=1;
       }
   }
      
@@ -141,22 +135,27 @@ class Building {
       const tempFloor = this.floors[fromFloorNumber];
       let buttonPush = 0;
       
-      if(fromFloorNumber>this.minPosibleFloor && fromFloorNumber<this.maxPosibleFloor)
+      if(fromFloorNumber>=1 && fromFloorNumber<=9)
           buttonPush =getRandomIntInclusive(0, 3);
+       
+      if(fromFloorNumber===9 && buttonPush===UP_BUTTON)
+          buttonPush=PENTHOUSE_BUTTON;
+      else if (fromFloorNumber===1 && buttonPush===DOWN_BUTTON)
+          buttonPush=BASEMENT_BUTTON;
 
-      if(fromFloorNumber===this.maxPosibleFloor){ 
+      if(fromFloorNumber===PENTHOUSE_FLOOR){ 
           passenger.elevatorNumber=0;
           passenger.direction="DOWN";
           buttonPush=DOWN_BUTTON;
-      }else if(fromFloorNumber===this.minPosibleFloor){
+      }else if(fromFloorNumber===BASEMENT_FLOOR){
           passenger.elevatorNumber=1;
           passenger.direction="UP";
           buttonPush=UP_BUTTON;
-      }else if(buttonPush===PENTHOUSE_BUTTON || (fromFloorNumber===9 && buttonPush===UP_BUTTON)){
-          passenger.direction="DOWN";
-          passenger.elevatorNumber=0;
-      }else if(buttonPush===BASEMENT_BUTTON || (fromFloorNumber===1 && buttonPush===DOWN_BUTTON)){
+      }else if(buttonPush===PENTHOUSE_BUTTON){
           passenger.direction="UP";
+          passenger.elevatorNumber=0;
+      }else if(buttonPush===BASEMENT_BUTTON){
+          passenger.direction="DOWN";
           passenger.elevatorNumber=1;
       }else if(buttonPush===UP_BUTTON){
           passenger.direction="UP";
@@ -169,54 +168,79 @@ class Building {
       tempFloor.buttons[buttonPush]=true;
       passenger.buttonNumber=buttonPush;
       tempFloor.waitingPassengers.push(passenger);
-      //console.log("passenger.elevatorNumber="+passenger.elevatorNumber);
-      this.elevators[passenger.elevatorNumber].hasAssigned=true;
-      console.log(`[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]} on ${FLOOR_NAME[fromFloorNumber]} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]} tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length}`);
+      const elevatorNum=passenger.elevatorNumber;
+      if(elevatorNum===null){
+          console.log(`\n[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]}  tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length} \n`);
+      }
+      
+      
+        if(passenger.direction==="UP" && this.elevators[elevatorNum]==passenger.direction && buttonPush===PENTHOUSE_BUTTON)
+            this.elevators[elevatorNum].destinationFloor=PENTHOUSE_FLOOR;
+        else if(passenger.direction==="DOWN" && this.elevators[elevatorNum]==passenger.direction && fromFloorNumber > this.elevators[elevatorNum].destinationFloor)
+            this.elevators[elevatorNum].destinationFloor=fromFloorNumber;
+        else if(passenger.direction==="DOWN" && this.elevators[elevatorNum]==passenger.direction && buttonPush===BASEMENT_BUTTON)
+            this.elevators[elevatorNum].destinationFloor=BASEMENT_FLOOR;
+        else if(passenger.direction==="UP" && this.elevators[elevatorNum]==passenger.direction  && fromFloorNumber < this.elevators[elevatorNum].destinationFloor)
+            this.elevators[elevatorNum].destinationFloor=fromFloorNumber;
+      
+      
+      console.log(`\n[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]} on ${FLOOR_NAME[fromFloorNumber]} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[elevatorNum]} tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length} LiftDest=${this.elevators[elevatorNum].destinationFloor}\n`);
+  
+      if(!this.elevators[elevatorNum].isMoving){
+          this.elevators[elevatorNum].isMoving=true;
+          this.moveElevator(elevatorNum);
+      }
+  }
+
+  setElevatorDirection(tempElevator){
+      if(tempElevator.direction==="UP" && (tempElevator.curFloor===tempElevator.maxFloor || tempElevator.curFloor===tempElevator.destinationFloor))
+          tempElevator.direction="DOWN";
+      else if(tempElevator.direction==="DOWN" && (tempElevator.curFloor===tempElevator.minFloor || tempElevator.curFloor===tempElevator.destinationFloor))
+          tempElevator.direction="UP";  
   }
 
   moveElevator(elevatorNumber){
-      if(this.arrivedPassengers.length===MAX_NUM_PASSENGER_TEST){
-          console.log("Test Completed!")
-          this.printSummary();
-          return;
-      }
-      
+      // let hasElevatorDirection =false;
+      // let newElevatorDestFloor;
       const tempElevator = this.elevators[elevatorNumber];
+      this.setElevatorDirection(tempElevator);
       let passengerRemove=[];
       const currentFloor = this.floors[tempElevator.curFloor];
-      let destinationFloor;
+      let selDestFloor;
       console.log(`[LOG] Moving ${tempElevator.direction} ${tempElevator.id} destinationFloor:${tempElevator.destinationFloor} currentFloor: ${tempElevator.curFloor}.  arrivedPassenger:${this.arrivedPassengers.length} inLiftPassengers:${tempElevator.inLiftPassengers.length} waitingPassenger:${currentFloor.waitingPassengers.length}`);
       if(currentFloor.waitingPassengers.length>0){
           currentFloor.waitingPassengers.forEach(passenger => {
-            console.log(`${passenger.direction} == ${tempElevator.direction}  ${passenger.elevatorNumber} ${tempElevator.inLiftPassengers.length}`);
+           // console.log(`\nDirection:${passenger.direction} == ${tempElevator.direction}  ElevatorNumber:${passenger.elevatorNumber} == ${passenger.elevatorNumber} currentFloor=${tempElevator.curFloor} inLiftPassengers.length=${tempElevator.inLiftPassengers.length}`);
+              
               if(passenger.elevatorNumber === elevatorNumber){
-                  if(passenger.buttonNumber===PENTHOUSE_BUTTON && tempElevator.id==="A"){
-                      destinationFloor=10;
-                      tempElevator.destinationFloor=destinationFloor;
-                  }else if(passenger.buttonNumber===BASEMENT_BUTTON && tempElevator.id==="B"){
-                      destinationFloor=0;
-                      tempElevator.destinationFloor=destinationFloor;
-                  }else if(passenger.direction=="UP"){
-                      destinationFloor=getRandomIntInclusive(passenger.fromFloorNumber+1, tempElevator.maxFloor);
-                      if(tempElevator.destinationFloor<destinationFloor || currentFloor.waitingPassengers.length==0) 
-                          tempElevator.destinationFloor=destinationFloor;
-                  }else{
-                      destinationFloor=getRandomIntInclusive(tempElevator.minFloor, passenger.fromFloorNumber-1);
-                      if(tempElevator.destinationFloor>destinationFloor || currentFloor.waitingPassengers.length==0) 
-                          tempElevator.destinationFloor=destinationFloor;
-                  }
-                  if(passenger.direction!=tempElevator.direction && tempElevator.inLiftPassengers.length===0)
-                      tempElevator.direction = passenger.direction;
 
-                  this.floors[destinationFloor].needToStop[elevatorNumber]=true;
-                  
-                  passenger.destinationFloor=destinationFloor;
-                  tempElevator.inLiftPassengers.push(passenger);
-                  passengerRemove.push(passenger);
-                  
-                  currentFloor.buttons[passenger.buttonNumber]=false;
-                  console.log(`[LOG] Passenger# ${passenger.personID} enter elevator on ${tempElevator.curFloor} floor to ${destinationFloor} floor on elevator ${tempElevator.id}`);
-                  //console.log(passenger);
+                  if(tempElevator.direction === passenger.direction || tempElevator.curFloor===tempElevator.destinationFloor){
+                      if(passenger.buttonNumber===PENTHOUSE_BUTTON && tempElevator.id==="A"){
+                            selDestFloor=PENTHOUSE_FLOOR;
+                            tempElevator.destinationFloor=selDestFloor;
+                      }else if(passenger.buttonNumber===BASEMENT_BUTTON && tempElevator.id==="B"){
+                            selDestFloor=BASEMENT_FLOOR;
+                            tempElevator.destinationFloor=selDestFloor;
+                      }else if(passenger.direction=="UP"){
+                            selDestFloor=getRandomIntInclusive(passenger.fromFloorNumber+1, tempElevator.maxFloor);
+                            if(tempElevator.destinationFloor<selDestFloor)
+                                tempElevator.destinationFloor=selDestFloor;
+                      }else if(passenger.direction=="DOWN"){
+                            selDestFloor=getRandomIntInclusive(tempElevator.minFloor, passenger.fromFloorNumber-1);
+                            if(tempElevator.destinationFloor>selDestFloor)
+                                tempElevator.destinationFloor=selDestFloor;
+                      }
+
+                      this.floors[selDestFloor].needToStop[elevatorNumber]=true;
+                      passenger.destinationFloor=selDestFloor;
+                      tempElevator.inLiftPassengers.push(passenger);
+                      passengerRemove.push(passenger);
+                      tempElevator.hasPassengerWaiting=false;
+                      currentFloor.buttons[passenger.buttonNumber]=false;
+                      console.log(`\n[LOG] Passenger# ${passenger.personID} enter elevator on ${FLOOR_NAME[tempElevator.curFloor]} floor to ${selDestFloor} floor on elevator ${tempElevator.id}\n`);
+                      //console.log(passenger);
+                  }else if(tempElevator.direction!==passenger.direction && passenger.fromFloorNumber===tempElevator.curFloor)
+                      tempElevator.hasPassengerWaiting=true;
               }
           });
           //console.log("passengerRemove="+passengerRemove.length);
@@ -232,25 +256,25 @@ class Building {
           this.removePassengerByFloorNumber(tempElevator.inLiftPassengers,currentFloor);
           currentFloor.needToStop[elevatorNumber]=false;
           //console.log(tempElevator);
-}
+          if(tempElevator.inLiftPassengers.length===0 && !tempElevator.hasPassengerWaiting)
+              this.elevators[elevatorNumber].isMoving=false;
+      }
   
-      if(tempElevator.direction==="UP" && tempElevator.curFloor<=tempElevator.maxFloor){
-          if(tempElevator.curFloor===tempElevator.maxFloor || tempElevator.curFloor===tempElevator.destinationFloor){
-              tempElevator.direction="DOWN";
+      if(this.elevators[elevatorNumber].isMoving && this.arrivedPassengers.length!==MAX_NUM_PASSENGER_TEST){
+          if(tempElevator.direction==="UP")
+              tempElevator.curFloor++;     
+          else 
               tempElevator.curFloor--;
-          }else
-              tempElevator.curFloor++;
-          setTimeout(() => { this.moveElevator(elevatorNumber); }, ELEVATOR_MOVE_FLOOR);
-      }else if(tempElevator.direction==="DOWN" && tempElevator.curFloor>=tempElevator.minFloor){
-          if(tempElevator.curFloor===tempElevator.minFloor || tempElevator.curFloor===tempElevator.destinationFloor){
-              tempElevator.direction="UP";
-              tempElevator.curFloor++;
-          }else
-              tempElevator.curFloor--;
-          setTimeout(() => { this.moveElevator(elevatorNumber); }, ELEVATOR_MOVE_FLOOR);
-      }    
-    
+          setTimeout(() => { this.moveElevator(elevatorNumber); }, TIME_LIFT_MOVE_BTW_FLOOR); 
+      }else{ 
+          if(this.arrivedPassengers.length===MAX_NUM_PASSENGER_TEST && !this.print){
+            console.log("\nTest Completed!")
+            this.printSummary();
+            this.print=true;
+          }
+      }
   }
+
 
   printSummary() {
     this.arrivedPassengers.map(passenger => {
@@ -259,7 +283,7 @@ class Building {
           ((passenger.endTravelTime - passenger.startTime) / 1000) * 100
         ) / 100;
       console.log(
-        `Passenger: ${passenger.personID}. From: ${passenger.fromFloorNumber} To: ${passenger.destinationFloor} on Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}. Total Time: ${totalTime} seconds`
+        `Passenger# ${passenger.personID} travels from ${FLOOR_NAME[passenger.fromFloorNumber]} to ${FLOOR_NAME[passenger.destinationFloor]} on Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}. Total Time: ${totalTime} seconds`
       );
     });
   }
@@ -282,12 +306,6 @@ const createRandomPassenger = () => {
       const passenger = new Passenger(totalPassengers, fromFloorNumber, "", "")
       myBuilding.setfromFloorNumberInfo(fromFloorNumber, passenger);
       
-      const tempFloor = myBuilding.floors[fromFloorNumber];
-      //console.log(passenger.elevatorNumber);
-      const elevatorNum = passenger.elevatorNumber;
-      if(!myBuilding.hasMoved){
-          myBuilding.moveElevator(passenger.elevatorNumber);
-      }
       if (totalPassengers < MAX_NUM_PASSENGER_TEST) {
           setTimeout(createRandomPassenger, Math.floor(Math.random() * 5000));
       }
