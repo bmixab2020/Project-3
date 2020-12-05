@@ -3,7 +3,7 @@ const ELEVATOR_OPEN_DOOR = 100;
 const ELEVATOR_CLOSE_DOOR = 100;
 const PASSENGER_ENTER_ELEVATOR = 500;
 const PASSENGER_LEAVE_ELEVATOR = 500;
-const MAX_NUM_PASSENGER_TEST = 10;
+const MAX_NUM_PASSENGER_TEST = 8;
 const PENTHOUSE_BUTTON=0;
 const BASEMENT_BUTTON=1;
 const UP_BUTTON=2;
@@ -38,6 +38,8 @@ class Elevator {
       this.destinationFloor = maxFloor;
       this.curFloor = curFloor;
       this.inLiftPassengers = [];
+      this.waitingPassengers = [];
+      this.arrivedPassengers = [];
       this.isMoving = false;
       this.hasPassengerWaiting=false;
     }
@@ -82,19 +84,18 @@ class Building {
   }
 
   removePassenger(passengerArray, passenger){
-      passengerArray.splice(passengerArray.findIndex( p =>  p.personID=passenger.personID),1);
+      passengerArray.splice(passengerArray.findIndex( p =>  p.personID===passenger.personID),1);
   }
 
-  removePassengerByFloorNumber(passengerArray, checkFloor){
-      const result = passengerArray.filter(passenger => passenger.destinationFloor===checkFloor.floor);
-      
-      result.forEach( passenger =>{
-          //console.log(`${passenger.destinationFloor} ${checkFloor.floor}`)
-          this.removePassenger(passengerArray, passenger)
-          passenger.endTravelTime = new Date();
-          this.arrivedPassengers.push(passenger);
-          console.log(`\n[LOG] Passenger# ${passenger.personID} leaves the lift on ${FLOOR_NAME[passenger.destinationFloor]} from Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}`);
-    
+  removePassengerByFloorNumber(inLiftPassengerList, currentFloor, selElevatorNumber){
+      const result = inLiftPassengerList.filter(passenger => passenger.destinationFloor===currentFloor && passenger.elevatorNumber===selElevatorNumber);
+
+      result.forEach( passenger => {
+            this.removePassenger(inLiftPassengerList, passenger)
+            passenger.endTravelTime = new Date();
+            this.arrivedPassengers.push(passenger);
+            this.elevators[passenger.elevatorNumber].arrivedPassengers.push(passenger);
+            console.log(`\n***[LOG] Passenger# ${passenger.personID} leaves the lift on ${FLOOR_NAME[passenger.destinationFloor]} from Elevator:${ELEVATOER_NAME[passenger.elevatorNumber]}`)
       });
   }
 
@@ -165,26 +166,13 @@ class Building {
           this.getAssignElevatorNumber(fromFloorNumber,passenger);
       }
        
+      const elevatorNum=passenger.elevatorNumber;
       tempFloor.buttons[buttonPush]=true;
       passenger.buttonNumber=buttonPush;
       tempFloor.waitingPassengers.push(passenger);
-      const elevatorNum=passenger.elevatorNumber;
-      if(elevatorNum===null){
-          console.log(`\n[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]}  tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length} \n`);
-      }
-      
-      
-        if(passenger.direction==="UP" && this.elevators[elevatorNum]==passenger.direction && buttonPush===PENTHOUSE_BUTTON)
-            this.elevators[elevatorNum].destinationFloor=PENTHOUSE_FLOOR;
-        else if(passenger.direction==="DOWN" && this.elevators[elevatorNum]==passenger.direction && fromFloorNumber > this.elevators[elevatorNum].destinationFloor)
-            this.elevators[elevatorNum].destinationFloor=fromFloorNumber;
-        else if(passenger.direction==="DOWN" && this.elevators[elevatorNum]==passenger.direction && buttonPush===BASEMENT_BUTTON)
-            this.elevators[elevatorNum].destinationFloor=BASEMENT_FLOOR;
-        else if(passenger.direction==="UP" && this.elevators[elevatorNum]==passenger.direction  && fromFloorNumber < this.elevators[elevatorNum].destinationFloor)
-            this.elevators[elevatorNum].destinationFloor=fromFloorNumber;
-      
-      
-      console.log(`\n[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]} on ${FLOOR_NAME[fromFloorNumber]} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[elevatorNum]} tempFloor.waitingPassengers ${tempFloor.waitingPassengers.length} LiftDest=${this.elevators[elevatorNum].destinationFloor}\n`);
+      this.elevators[elevatorNum].waitingPassengers.push(passenger);
+          
+      console.log(`\n*[LOG] Passenger# ${passenger.personID} pushes ${BUTTON_NAME[buttonPush]} on ${FLOOR_NAME[fromFloorNumber]} direction:${passenger.direction} Elevator:${ELEVATOER_NAME[elevatorNum]}`);
   
       if(!this.elevators[elevatorNum].isMoving){
           this.elevators[elevatorNum].isMoving=true;
@@ -193,9 +181,9 @@ class Building {
   }
 
   setElevatorDirection(tempElevator){
-      if(tempElevator.direction==="UP" && (tempElevator.curFloor===tempElevator.maxFloor || tempElevator.curFloor===tempElevator.destinationFloor))
+      if(tempElevator.curFloor===tempElevator.maxFloor)
           tempElevator.direction="DOWN";
-      else if(tempElevator.direction==="DOWN" && (tempElevator.curFloor===tempElevator.minFloor || tempElevator.curFloor===tempElevator.destinationFloor))
+      else if(tempElevator.curFloor===tempElevator.minFloor)
           tempElevator.direction="UP";  
   }
 
@@ -207,14 +195,13 @@ class Building {
       let passengerRemove=[];
       const currentFloor = this.floors[tempElevator.curFloor];
       let selDestFloor;
-      console.log(`[LOG] Moving ${tempElevator.direction} ${tempElevator.id} destinationFloor:${tempElevator.destinationFloor} currentFloor: ${tempElevator.curFloor}.  arrivedPassenger:${this.arrivedPassengers.length} inLiftPassengers:${tempElevator.inLiftPassengers.length} waitingPassenger:${currentFloor.waitingPassengers.length}`);
+      console.log(`[LOG] Moving ${tempElevator.direction} ${tempElevator.id} currentFloor: ${tempElevator.curFloor}.  arrivedPassenger:${tempElevator.arrivedPassengers.length} inLiftPassengers:${tempElevator.inLiftPassengers.length} waitingPassenger:${tempElevator.waitingPassengers.length}`);
       if(currentFloor.waitingPassengers.length>0){
           currentFloor.waitingPassengers.forEach(passenger => {
            // console.log(`\nDirection:${passenger.direction} == ${tempElevator.direction}  ElevatorNumber:${passenger.elevatorNumber} == ${passenger.elevatorNumber} currentFloor=${tempElevator.curFloor} inLiftPassengers.length=${tempElevator.inLiftPassengers.length}`);
               
               if(passenger.elevatorNumber === elevatorNumber){
-
-                  if(tempElevator.direction === passenger.direction || tempElevator.curFloor===tempElevator.destinationFloor){
+                  if(tempElevator.direction === passenger.direction ){//|| tempElevator.curFloor===tempElevator.destinationFloor){
                       if(passenger.buttonNumber===PENTHOUSE_BUTTON && tempElevator.id==="A"){
                             selDestFloor=PENTHOUSE_FLOOR;
                             tempElevator.destinationFloor=selDestFloor;
@@ -237,7 +224,8 @@ class Building {
                       passengerRemove.push(passenger);
                       tempElevator.hasPassengerWaiting=false;
                       currentFloor.buttons[passenger.buttonNumber]=false;
-                      console.log(`\n[LOG] Passenger# ${passenger.personID} enter elevator on ${FLOOR_NAME[tempElevator.curFloor]} floor to ${selDestFloor} floor on elevator ${tempElevator.id}\n`);
+                      //console.log(`[LOG] Moving ${tempElevator.direction} ${tempElevator.id} destinationFloor:${tempElevator.destinationFloor} currentFloor: ${tempElevator.curFloor}.  arrivedPassenger:${tempElevator.arrivedPassengers.length} inLiftPassengers:${tempElevator.inLiftPassengers.length} waitingPassenger:${tempElevator.waitingPassengers.length}`);
+                      console.log(`\n**[LOG] Passenger# ${passenger.personID} enter elevator on ${FLOOR_NAME[tempElevator.curFloor]} to ${selDestFloor} floor on elevator ${tempElevator.id}`);
                       //console.log(passenger);
                   }else if(tempElevator.direction!==passenger.direction && passenger.fromFloorNumber===tempElevator.curFloor)
                       tempElevator.hasPassengerWaiting=true;
@@ -253,21 +241,22 @@ class Building {
            //console.log(currentFloor);
       if(currentFloor.needToStop[elevatorNumber]){
           //console.log(tempElevator);
-          this.removePassengerByFloorNumber(tempElevator.inLiftPassengers,currentFloor);
+          this.removePassengerByFloorNumber(tempElevator.inLiftPassengers,tempElevator.curFloor,elevatorNumber);
+          console.log(`[LOG] Moving ${tempElevator.direction} ${tempElevator.id} destinationFloor:${tempElevator.destinationFloor} currentFloor: ${tempElevator.curFloor}.  arrivedPassenger:${tempElevator.arrivedPassengers.length} inLiftPassengers:${tempElevator.inLiftPassengers.length} waitingPassenger:${tempElevator.waitingPassengers.length}`);          
           currentFloor.needToStop[elevatorNumber]=false;
           //console.log(tempElevator);
-          if(tempElevator.inLiftPassengers.length===0 && !tempElevator.hasPassengerWaiting)
-              this.elevators[elevatorNumber].isMoving=false;
-      }
-  
-      if(this.elevators[elevatorNumber].isMoving && this.arrivedPassengers.length!==MAX_NUM_PASSENGER_TEST){
+           if(tempElevator.arrivedPassengers.length>0 && tempElevator.waitingPassengers.length===tempElevator.arrivedPassengers.length)
+                this.elevators[elevatorNumber].isMoving=false;
+       }
+      // console.log(`${tempElevator.arrivedPassengers.length} ${tempElevator.waitingPassengers.length}`)
+      if(this.elevators[elevatorNumber].isMoving){
           if(tempElevator.direction==="UP")
               tempElevator.curFloor++;     
           else 
               tempElevator.curFloor--;
           setTimeout(() => { this.moveElevator(elevatorNumber); }, TIME_LIFT_MOVE_BTW_FLOOR); 
       }else{ 
-          if(this.arrivedPassengers.length===MAX_NUM_PASSENGER_TEST && !this.print){
+          if(this.arrivedPassengers.length === MAX_NUM_PASSENGER_TEST && !this.print){
             console.log("\nTest Completed!")
             this.printSummary();
             this.print=true;
@@ -277,6 +266,7 @@ class Building {
 
 
   printSummary() {
+    this.arrivedPassengers.sort((a, b) => a.personID-b.personID);
     this.arrivedPassengers.map(passenger => {
       const totalTime =
         Math.round(
@@ -316,5 +306,5 @@ createRandomPassenger();
 /*
     Name: Sengchanh Jutiseema
     Homework: Project #3 Elevator
-    Date: 11/30/2020
+    Date: 12/04/2020
 */
