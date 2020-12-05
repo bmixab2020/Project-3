@@ -1,9 +1,11 @@
+const MAX_NUM_PASSENGER_TEST = 10;
+
 const TIME_LIFT_MOVE_BTW_FLOOR = 1000;
 const ELEVATOR_OPEN_DOOR = 100;
 const ELEVATOR_CLOSE_DOOR = 100;
 const PASSENGER_ENTER_ELEVATOR = 500;
 const PASSENGER_LEAVE_ELEVATOR = 500;
-const MAX_NUM_PASSENGER_TEST = 8;
+
 const PENTHOUSE_BUTTON=0;
 const BASEMENT_BUTTON=1;
 const UP_BUTTON=2;
@@ -248,8 +250,15 @@ class Building {
            if(tempElevator.arrivedPassengers.length>0 && tempElevator.waitingPassengers.length===tempElevator.arrivedPassengers.length)
                 this.elevators[elevatorNumber].isMoving=false;
        }
+       
+       if(tempElevator.inLiftPassengers  && tempElevator.inLiftPassengers.length===1 && tempElevator.direction !== tempElevator.inLiftPassengers[0].direction){
+            tempElevator.direction = tempElevator.inLiftPassengers[0].direction;
+            setTimeout(() => { this.moveElevator(elevatorNumber); }, TIME_LIFT_MOVE_BTW_FLOOR);
+            return;
+       }
+
       // console.log(`${tempElevator.arrivedPassengers.length} ${tempElevator.waitingPassengers.length}`)
-      if(this.elevators[elevatorNumber].isMoving){
+      if(tempElevator.isMoving){
           if(tempElevator.direction==="UP")
               tempElevator.curFloor++;     
           else 
